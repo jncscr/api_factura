@@ -1,14 +1,100 @@
 from django.db import models
 from django.forms.models import model_to_dict
-
-class Caracteristica(models.Model):
-    id = models.IntegerField(primary_key=True)
-    caracteristica = models.CharField(max_length=255, blank=True)
+#Darse cuenta de borrar Id para que retorne el Id grabado
+class Atributo(models.Model):
+    nombre = models.CharField(max_length=255, blank=True)
     estado = models.BooleanField(default=True)
-    tipo_control = models.IntegerField(blank=True, null=True)
-    mostrar_en_compra = models.BooleanField(default=True)
-    mostrar_en_venta = models.BooleanField(default=True)
-    tipo_caracteristica = models.ForeignKey('TipoCaracteristica')
+    tipo_control = models.ForeignKey('TipoControl')
+    
+    def __init__(self, *args, **kwargs):
+        super(Atributo, self).__init__(*args, **kwargs)
+        self.__initial = self._dict
+
+    @property
+    def diff(self):
+        d1 = self.__initial
+        d2 = self._dict
+        diffs = [(k, (v, d2[k])) for k, v in d1.items() if v != d2[k]]
+        return dict(diffs)
+
+    @property
+    def has_changed(self):
+        return bool(self.diff)
+
+    @property
+    def changed_fields(self):
+        return self.diff.keys()
+
+    def get_field_diff(self, field_name):
+        """
+        Returns a diff for field if it's changed and None otherwise.
+        """
+        return self.diff.get(field_name, None)
+
+    def save(self, *args, **kwargs):
+        """
+        Saves model and set initial state.
+        """
+        super(Atributo, self).save(*args, **kwargs)
+        self.__initial = self._dict
+
+    @property
+    def _dict(self):
+        return model_to_dict(self, fields=[field.name for field in
+                             self._meta.fields])
+    
+    
+    class Meta:
+        db_table = 'atributo'
+
+class AtributoValor(models.Model):
+    valor = models.CharField(max_length=255, blank=True)
+    atributo = models.ForeignKey(Atributo)
+    estado = models.IntegerField(blank=True, null=True)
+    
+    def __init__(self, *args, **kwargs):
+        super(AtributoValor, self).__init__(*args, **kwargs)
+        self.__initial = self._dict
+
+    @property
+    def diff(self):
+        d1 = self.__initial
+        d2 = self._dict
+        diffs = [(k, (v, d2[k])) for k, v in d1.items() if v != d2[k]]
+        return dict(diffs)
+
+    @property
+    def has_changed(self):
+        return bool(self.diff)
+
+    @property
+    def changed_fields(self):
+        return self.diff.keys()
+
+    def get_field_diff(self, field_name):
+        """
+        Returns a diff for field if it's changed and None otherwise.
+        """
+        return self.diff.get(field_name, None)
+
+    def save(self, *args, **kwargs):
+        """
+        Saves model and set initial state.
+        """
+        super(AtributoValor, self).save(*args, **kwargs)
+        self.__initial = self._dict
+
+    @property
+    def _dict(self):
+        return model_to_dict(self, fields=[field.name for field in
+                             self._meta.fields])
+    
+    class Meta:
+        db_table = 'atributo_valor'
+        
+class Caracteristica(models.Model):
+    nombre = models.CharField(max_length=255, blank=True)
+    estado = models.BooleanField(default=True)
     
     def __init__(self, *args, **kwargs):
         super(Caracteristica, self).__init__(*args, **kwargs)
@@ -52,7 +138,6 @@ class Caracteristica(models.Model):
         db_table = 'caracteristica'
 
 class Cobro(models.Model):
-    id = models.IntegerField(primary_key=True)
     no_recibo_caja = models.CharField(max_length=255, blank=True)
     no_cheque = models.CharField(max_length=255, blank=True)
     venta = models.ForeignKey('Venta')
@@ -104,7 +189,6 @@ class Cobro(models.Model):
         db_table = 'cobro'
 
 class Compra(models.Model):
-    id = models.IntegerField(primary_key=True)
     fecha = models.DateField(blank=True, null=True)
     personal = models.ForeignKey('Personal')
     estado = models.BooleanField(default=True)
@@ -158,7 +242,6 @@ class Compra(models.Model):
         db_table = 'compra'
 
 class CompraAsignacion(models.Model):
-    id = models.IntegerField(primary_key=True)
     usuario_sistema_id = models.IntegerField()
     libras_asignadas = models.FloatField(blank=True, null=True)
     fecha = models.DateField(blank=True, null=True)
@@ -171,16 +254,14 @@ class CompraAsignacion(models.Model):
         managed = False
         db_table = 'compra_asignacion'
 
-class CompraCaracteristica(models.Model):
+class CompraAtributo(models.Model):
     compra_detalle = models.ForeignKey('CompraDetalle')
-    producto_caracteristica = models.ForeignKey('ProductoCaracteristica')
-    id = models.IntegerField(primary_key=True)
-    tipo_caracteristica = models.ForeignKey('TipoCaracteristica')
-    tipo_dato = models.ForeignKey('TipoDato', blank=True, null=True)
+    producto_atributo = models.ForeignKey('ProductoAtributo')
     estado = models.BooleanField(default=True)
+    atributo_valor = models.ForeignKey(AtributoValor)
     
     def __init__(self, *args, **kwargs):
-        super(CompraCaracteristica, self).__init__(*args, **kwargs)
+        super(CompraAtributo, self).__init__(*args, **kwargs)
         self.__initial = self._dict
 
     @property
@@ -208,7 +289,7 @@ class CompraCaracteristica(models.Model):
         """
         Saves model and set initial state.
         """
-        super(CompraCaracteristica, self).save(*args, **kwargs)
+        super(CompraAtributo, self).save(*args, **kwargs)
         self.__initial = self._dict
 
     @property
@@ -218,59 +299,11 @@ class CompraCaracteristica(models.Model):
     
     
     class Meta:
-        db_table = 'compra_caracteristica'
-
-class CompraCaracteristicaValor(models.Model):
-    id = models.IntegerField(primary_key=True)
-    numerico = models.FloatField(blank=True, null=True)
-    entero = models.IntegerField(blank=True, null=True)
-    texto = models.CharField(max_length=255, blank=True)
-    compra_caracteristica = models.ForeignKey(CompraCaracteristica)
-    
-    def __init__(self, *args, **kwargs):
-        super(CompraCaracteristicaValor, self).__init__(*args, **kwargs)
-        self.__initial = self._dict
-
-    @property
-    def diff(self):
-        d1 = self.__initial
-        d2 = self._dict
-        diffs = [(k, (v, d2[k])) for k, v in d1.items() if v != d2[k]]
-        return dict(diffs)
-
-    @property
-    def has_changed(self):
-        return bool(self.diff)
-
-    @property
-    def changed_fields(self):
-        return self.diff.keys()
-
-    def get_field_diff(self, field_name):
-        """
-        Returns a diff for field if it's changed and None otherwise.
-        """
-        return self.diff.get(field_name, None)
-
-    def save(self, *args, **kwargs):
-        """
-        Saves model and set initial state.
-        """
-        super(CompraCaracteristicaValor, self).save(*args, **kwargs)
-        self.__initial = self._dict
-
-    @property
-    def _dict(self):
-        return model_to_dict(self, fields=[field.name for field in
-                             self._meta.fields])   
-        
-    class Meta:
-        db_table = 'compra_caracteristica_valor'
+        db_table = 'compra_atributo'
 
 class CompraDetalle(models.Model):
     compra = models.ForeignKey(Compra)
     producto = models.ForeignKey('Producto')
-    id = models.IntegerField(primary_key=True)
     cantidad = models.IntegerField(blank=True, null=True)
     precio = models.ForeignKey('Precio')
     estado = models.BooleanField(default=True)
@@ -316,7 +349,6 @@ class CompraDetalle(models.Model):
         db_table = 'compra_detalle'
 
 class Pago(models.Model):
-    id = models.IntegerField(primary_key=True)
     no_recibo_caja = models.CharField(max_length=255, blank=True)
     no_cheque = models.CharField(max_length=255, blank=True)
     valor_pago = models.FloatField(blank=True, null=True)
@@ -367,7 +399,6 @@ class Pago(models.Model):
         db_table = 'pago'
 
 class PagoTipo(models.Model):
-    id = models.IntegerField(primary_key=True)
     descripcion = models.CharField(max_length=255, blank=True)
     estado = models.BooleanField(default=True)
     
@@ -412,7 +443,6 @@ class PagoTipo(models.Model):
         db_table = 'pago_tipo'
 
 class Personal(models.Model):
-    id = models.IntegerField(primary_key=True)
     nombres = models.CharField(max_length=250, blank=True)
     apellidos = models.CharField(max_length=250, blank=True)
     telefono = models.CharField(max_length=250, blank=True)
@@ -470,7 +500,6 @@ class Personal(models.Model):
 class PersonalPrecio(models.Model):
     personal = models.ForeignKey(Personal)
     precio = models.ForeignKey('Precio')
-    id = models.IntegerField(primary_key=True)
     estado = models.BooleanField(default=True)
     fecha = models.DateField(blank=True, null=True)
     precio_tipo = models.ForeignKey('PrecioTipo')
@@ -522,7 +551,6 @@ class Precio(models.Model):
     fecha = models.DateField(blank=True, null=True)
     estado = models.BooleanField(default=True)
     precio_tipo = models.ForeignKey('PrecioTipo')
-    id = models.IntegerField(primary_key=True)
     empresa_id = models.IntegerField(blank=True, null=True)
     usuario_sistema_id = models.IntegerField()
     
@@ -567,7 +595,6 @@ class Precio(models.Model):
         db_table = 'precio'
 
 class PrecioTipo(models.Model):
-    id = models.IntegerField(primary_key=True)
     descripcion = models.CharField(max_length=255, blank=True)
     estado = models.BooleanField(default=True)
     
@@ -612,7 +639,6 @@ class PrecioTipo(models.Model):
         db_table = 'precio_tipo'
 
 class Producto(models.Model):
-    id = models.IntegerField(primary_key=True)
     fecha = models.DateTimeField(blank=True, null=True)
     estado = models.BooleanField(default=True)
     nombre = models.CharField(max_length=255, blank=True)
@@ -660,14 +686,57 @@ class Producto(models.Model):
     class Meta:
         db_table = 'producto'
 
+class ProductoAtributo(models.Model):
+    producto = models.ForeignKey(Producto)
+    estado = models.BooleanField(default=True)
+    atributo = models.ForeignKey(Atributo)
+    tipo_control = models.ForeignKey('TipoControl')
+    
+    def __init__(self, *args, **kwargs):
+        super(ProductoAtributo, self).__init__(*args, **kwargs)
+        self.__initial = self._dict
+
+    @property
+    def diff(self):
+        d1 = self.__initial
+        d2 = self._dict
+        diffs = [(k, (v, d2[k])) for k, v in d1.items() if v != d2[k]]
+        return dict(diffs)
+
+    @property
+    def has_changed(self):
+        return bool(self.diff)
+
+    @property
+    def changed_fields(self):
+        return self.diff.keys()
+
+    def get_field_diff(self, field_name):
+        """
+        Returns a diff for field if it's changed and None otherwise.
+        """
+        return self.diff.get(field_name, None)
+
+    def save(self, *args, **kwargs):
+        """
+        Saves model and set initial state.
+        """
+        super(ProductoAtributo, self).save(*args, **kwargs)
+        self.__initial = self._dict
+
+    @property
+    def _dict(self):
+        return model_to_dict(self, fields=[field.name for field in
+                             self._meta.fields])   
+    
+    class Meta:
+        db_table = 'producto_atributo'
+
 class ProductoCaracteristica(models.Model):
     producto = models.ForeignKey(Producto)
-    id = models.IntegerField(primary_key=True)
-    nombre = models.CharField(max_length=255, blank=True)
+    valor = models.CharField(max_length=255, blank=True)
     estado = models.BooleanField(default=True)
-    caracteristica = models.ForeignKey(Caracteristica)
-    tipo_caracteristica = models.ForeignKey('TipoCaracteristica')
-    tipo_dato = models.ForeignKey('TipoDato', blank=True, null=True)
+    caracteristica = models.ForeignKey('Caracteristica')
     
     def __init__(self, *args, **kwargs):
         super(ProductoCaracteristica, self).__init__(*args, **kwargs)
@@ -710,7 +779,6 @@ class ProductoCaracteristica(models.Model):
         db_table = 'producto_caracteristica'
 
 class ProductoCategoria(models.Model):
-    id = models.IntegerField(primary_key=True)
     nombre = models.CharField(max_length=255, blank=True)
     producto_categoria = models.ForeignKey('self', blank=True, null=True)
     es_nodo_principal = models.BooleanField(default=True)
@@ -757,12 +825,11 @@ class ProductoCategoria(models.Model):
     class Meta:
         db_table = 'producto_categoria'
 
-class TipoCaracteristica(models.Model):
-    id = models.IntegerField(primary_key=True)
+class TipoControl(models.Model):
     nombre = models.CharField(max_length=50, blank=True)
     
     def __init__(self, *args, **kwargs):
-        super(TipoCaracteristica, self).__init__(*args, **kwargs)
+        super(TipoControl, self).__init__(*args, **kwargs)
         self.__initial = self._dict
 
     @property
@@ -790,7 +857,7 @@ class TipoCaracteristica(models.Model):
         """
         Saves model and set initial state.
         """
-        super(TipoCaracteristica, self).save(*args, **kwargs)
+        super(TipoControl, self).save(*args, **kwargs)
         self.__initial = self._dict
 
     @property
@@ -799,17 +866,9 @@ class TipoCaracteristica(models.Model):
                              self._meta.fields])   
     
     class Meta:
-        db_table = 'tipo_caracteristica'
-
-class TipoDato(models.Model):
-    id = models.IntegerField(primary_key=True)
-    nombre = models.CharField(max_length=255, blank=True)
-    columna = models.CharField(max_length=50, blank=True)
-    class Meta:
-        db_table = 'tipo_dato'
+        db_table = 'tipo_control'
 
 class TipoVenta(models.Model):
-    id = models.IntegerField(primary_key=True)
     descripcion = models.CharField(max_length=250, blank=True)
     estado = models.BooleanField(default=True)
     
@@ -856,7 +915,6 @@ class TipoVenta(models.Model):
 class UsuarioVenta(models.Model):
     usuario_sistema_id = models.IntegerField()
     venta = models.ForeignKey('Venta')
-    id = models.IntegerField(primary_key=True)
     hora_salida = models.TimeField(blank=True, null=True)
     hora_entrega = models.TimeField(blank=True, null=True)
     fecha = models.DateField(blank=True, null=True)
@@ -903,7 +961,6 @@ class UsuarioVenta(models.Model):
         db_table = 'usuario_venta'
 
 class Venta(models.Model):
-    id = models.IntegerField(primary_key=True)
     tipo_venta = models.ForeignKey(TipoVenta)
     fecha = models.DateField(blank=True, null=True)
     personal = models.ForeignKey(Personal)
@@ -958,16 +1015,14 @@ class Venta(models.Model):
     class Meta:
         db_table = 'venta'
 
-class VentaCaracteristica(models.Model):
-    producto_caracteristica = models.ForeignKey(ProductoCaracteristica)
+class VentaAtributo(models.Model):
+    producto_atributo = models.ForeignKey(ProductoAtributo)
     venta_detalle = models.ForeignKey('VentaDetalle')
-    tipo_caracteristica = models.ForeignKey(TipoCaracteristica)
-    tipo_dato = models.ForeignKey(TipoDato, blank=True, null=True)
-    id = models.IntegerField(primary_key=True)
     estado = models.BooleanField(default=True)
+    atributo_valor = models.ForeignKey(AtributoValor)
     
     def __init__(self, *args, **kwargs):
-        super(VentaCaracteristica, self).__init__(*args, **kwargs)
+        super(VentaAtributo, self).__init__(*args, **kwargs)
         self.__initial = self._dict
 
     @property
@@ -995,7 +1050,7 @@ class VentaCaracteristica(models.Model):
         """
         Saves model and set initial state.
         """
-        super(VentaCaracteristica, self).save(*args, **kwargs)
+        super(VentaAtributo, self).save(*args, **kwargs)
         self.__initial = self._dict
 
     @property
@@ -1004,59 +1059,11 @@ class VentaCaracteristica(models.Model):
                              self._meta.fields])   
     
     class Meta:
-        db_table = 'venta_caracteristica'
-
-class VentaCaracteristicaValor(models.Model):
-    id = models.IntegerField(primary_key=True)
-    numerico = models.FloatField(blank=True, null=True)
-    entero = models.IntegerField(blank=True, null=True)
-    texto = models.CharField(max_length=255, blank=True)
-    venta_caracteristica = models.ForeignKey(VentaCaracteristica)
-    
-    def __init__(self, *args, **kwargs):
-        super(VentaCaracteristicaValor, self).__init__(*args, **kwargs)
-        self.__initial = self._dict
-
-    @property
-    def diff(self):
-        d1 = self.__initial
-        d2 = self._dict
-        diffs = [(k, (v, d2[k])) for k, v in d1.items() if v != d2[k]]
-        return dict(diffs)
-
-    @property
-    def has_changed(self):
-        return bool(self.diff)
-
-    @property
-    def changed_fields(self):
-        return self.diff.keys()
-
-    def get_field_diff(self, field_name):
-        """
-        Returns a diff for field if it's changed and None otherwise.
-        """
-        return self.diff.get(field_name, None)
-
-    def save(self, *args, **kwargs):
-        """
-        Saves model and set initial state.
-        """
-        super(VentaCaracteristicaValor, self).save(*args, **kwargs)
-        self.__initial = self._dict
-
-    @property
-    def _dict(self):
-        return model_to_dict(self, fields=[field.name for field in
-                             self._meta.fields])   
-    
-    class Meta:
-        db_table = 'venta_caracteristica_valor'
+        db_table = 'venta_atributo'
 
 class VentaDetalle(models.Model):
     venta = models.ForeignKey(Venta)
     producto = models.ForeignKey(Producto)
-    id = models.IntegerField(primary_key=True)
     cantidad = models.IntegerField(blank=True, null=True)
     precio = models.ForeignKey(Precio)
     estado = models.BooleanField(default=True)
