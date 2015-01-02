@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from datetime import datetime
-
+from django.db import connections
 
 @api_view(['GET', 'POST'])
 def caracteristica_listado(request):
@@ -29,17 +29,17 @@ def caracteristica_listado(request):
     #print(bd)
     # termina verificaciond e modulo
     if request.method=='GET':
-        print(request.QUERY_PARAMS)
         if request.QUERY_PARAMS.get('param') is not None:
             
             param=request.QUERY_PARAMS.get('param')
             caracteristicas = Caracteristica.objects.using(bd).filter(Q(estado=True),
-                                                        Q(nombre__icontains = param))            
+                                                        (Q(nombre__icontains = param)|
+                                                        Q(id__icontains=param)))            
         else:
             caracteristicas = Caracteristica.objects.using(bd).filter(estado=True)
         #print(len(personal))
-        numPages=request.QUERY_PARAMS.get('per_page')
-        paginator = Paginator(caracteristicas,numPages)
+        numRegistros=request.QUERY_PARAMS.get('per_page')
+        paginator = Paginator(caracteristicas,numRegistros)
         
         page = request.QUERY_PARAMS.get('page')
         try:
@@ -51,11 +51,22 @@ def caracteristica_listado(request):
             # If page is out of range (e.g. 9999),
             # deliver last page of results.
             registros = paginator.page(paginator.num_pages)
-
         serializer_context = {'request': request}
-        #print(registros)
         serializer = PaginatedCaracteristicaSerializer(registros,
                                              context=serializer_context)
+        num=0
+        conn = connections[bd]
+        if conn.connection is None:
+            cursor = conn.cursor()        
+        cursor = conn.connection.cursor()
+        query ='select count(caracteristica.id) \n\
+                from caracteristica where caracteristica.estado=1'
+        cursor.execute(query)
+        row =cursor.fetchone()
+        if row[0]!=None:
+            num=row[0]
+        num=num+1
+        serializer.data['last_num_reg']=num;
         return Response(serializer.data)
     
     elif request.method=='POST':
