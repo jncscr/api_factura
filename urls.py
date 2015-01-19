@@ -5,8 +5,10 @@ from rest_framework.urlpatterns import format_suffix_patterns
 
 urlpatterns = patterns('api_factura.views',
     url(r'^productos/$', 'producto_listado'), 
+    url(r'^productos/(?P<pk>[0-9]+)$', 'producto_detalle'),
     url(r'^categorias/$', 'categoria_listado'), 
     url(r'^categorias/(?P<pk>[0-9]+)$', 'categoria_detalle'),  
+    url(r'^categorias/productos/lista/$', 'categoria_producto_lista'), 
     url(r'^caracteristicas/$', 'caracteristica_listado'),
     url(r'^caracteristicas/(?P<pk>[0-9]+)$', 'caracteristica_detalle'),
     url(r'^atributos/$', 'atributo_listado'),

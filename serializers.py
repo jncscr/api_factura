@@ -5,12 +5,25 @@ from rest_framework import pagination
 #from datetime import datetime
 #from django.db.models import Q
 #from django.db import connections
+from api.settings import MEDIA_URL
 
 class ProductoSerializer(serializers.ModelSerializer):
+    img_150x150 = serializers.SerializerMethodField('get_img_150x150')
+    img_500x500 = serializers.SerializerMethodField('get_img_500x500')
     class Meta:
         model = Producto
-        fields = ('id','nombre','descripcion')  
-        
+        fields = ('id','nombre','descripcion','img_150x150',
+                    'img_500x500')  
+    def get_img_150x150(self,obj):
+        if obj.img!=None and obj.img!='':
+            return MEDIA_URL+obj.img+'/'+obj.img_date+'_principal_150x150.jpeg'
+        else:
+            return None
+    def get_img_500x500(self,obj):
+        if obj.img!=None and obj.img!='':
+            return MEDIA_URL+obj.img+'/'+obj.img_date+'_principal_500x500.jpeg'
+        else:
+            return None
 class CaracteristicaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Caracteristica

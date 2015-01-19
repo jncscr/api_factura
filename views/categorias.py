@@ -249,3 +249,80 @@ def categoria_detalle(request,pk):
         respuesta={"":""}
         return Response(respuesta, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def categoria_producto_lista(request):
+    #from api_pollo.models import Personal
+    #Codigo de verificacion de asignacion de modulo    
+    user=Usuario.objects.get(auth_user_id=request.user.id)
+    
+    modulos=[8]
+    modulo_valido=validar_modulos(user.perfil.id,user.empresa.id,modulos)
+    #print(modulo_valido)
+    if modulo_valido['error']==1:
+        errors={"error":"No tiene permisos suficientes, para realizar operaciones en este modulo"}
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    bd=modulo_valido['bd']
+    #print(bd)
+    # termina verificaciond e modulo
+    if request.method=='GET':
+        categorias=ProductoCategoria.objects.using(bd).filter(es_nodo_principal=True,
+                                                        estado=True).order_by("numero")
+        texto='<ul class="dropdown-menu inner selectpicker" style="max-height: 220px; overflow-y: auto; min-height: 81px;" role="menu">'
+        texto=texto+'<li class="btn-group open active">'+'<a data-cat="0" data-text="Todas"><span class="text">Todas</span></a>'
+        num=1
+        array=[]
+        arbol=crearArbolLista(categorias,bd,num,0,array)
+        texto=texto+arbol+'</li></ul>'
+        respuesta = {'arbol': texto}
+        
+        return Response(respuesta)
+    
+def crearArbolLista(categorias,bd,num,sub,array):
+    texto='<ul class="dropdown-menu inner" role="menu">'
+    for cat in categorias:
+               
+        subcategorias=ProductoCategoria.objects.using(bd).filter(es_nodo_principal=False,
+                                                        estado=True,
+                                                        producto_categoria_id=cat.id).order_by("numero")
+        subsTexto=''
+        addNum=''
+        si=False
+        
+        if sub==0:
+            addNum=str(num)
+            si=True
+            array.append(num)
+        else:
+            if len(array)>0:
+                addNum=str(array[0])
+                for n in range(0,len(array)):
+                    if n>0:
+                        addNum=addNum+'.'+str(array[n])
+        
+        if len(subcategorias)>0:
+            tmp_sub=sub
+            tmp=[]
+            for a in array:
+                tmp.append(a)
+            sub=1
+            array.append(sub)
+            subsTexto=crearArbolLista(subcategorias,bd,num,sub,array)
+            array=tmp  
+            sub=tmp_sub+1
+            array[(len(array)-1)]=sub
+            texto=texto+'<li class="btn-group open">'+'<a data-cat="'+str(cat.id)+'" data-text="'+cat.nombre+'"><span class="text">'+addNum+'. '+cat.nombre+'</span></a>'
+            texto=texto+subsTexto+'<li class="divider" data-original-index="null"></li>'            
+        else:
+            texto=texto+'<li>'+'<a data-cat="'+str(cat.id)+'" data-text="'+cat.nombre+'"><span class="text">'+addNum+'. '+cat.nombre+'</span></a>'
+            texto=texto+subsTexto+'</li>';            
+            sub=sub+1
+            array[(len(array)-1)]=sub
+        if si==True: 
+            sub=0
+            array=[]
+        
+        num=num+1
+    texto=texto+'</ul>'
+    
+    return texto

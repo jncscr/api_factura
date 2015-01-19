@@ -645,7 +645,8 @@ class Producto(models.Model):
     descripcion = models.TextField(blank=True)
     empresa_id = models.IntegerField(blank=True, null=True)
     producto_categoria = models.ForeignKey('ProductoCategoria', blank=True, null=True)
-    
+    img = models.CharField(max_length=255, blank=True)
+    img_date = models.CharField(max_length=100, blank=True)
     def __init__(self, *args, **kwargs):
         super(Producto, self).__init__(*args, **kwargs)
         self.__initial = self._dict
