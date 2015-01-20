@@ -3,7 +3,7 @@ from api_factura.serializers import PaginatedProductoSerializer
 from api_usuario.models import Usuario
 from api_pollo.views.validar_modulos import validar_modulos
 #from django.db.models import Q
-from api_factura.models import ProductoCategoria
+from api_factura.models import ProductoCategoria,ProdCatAsig
 
 #Usuario,PerfilModulo,EmpresaModulo
 from rest_framework.decorators import api_view
@@ -326,3 +326,107 @@ def crearArbolLista(categorias,bd,num,sub,array):
     texto=texto+'</ul>'
     
     return texto
+
+@api_view(['GET', 'POST'])
+def categoria_producto(request):
+    #from api_pollo.models import Personal
+    #Codigo de verificacion de asignacion de modulo    
+    user=Usuario.objects.get(auth_user_id=request.user.id)
+    
+    modulos=[9]
+    modulo_valido=validar_modulos(user.perfil.id,user.empresa.id,modulos)
+    #print(modulo_valido)
+    if modulo_valido['error']==1:
+        errors={"error":"No tiene permisos suficientes, para realizar operaciones en este modulo"}
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    bd=modulo_valido['bd']
+    #print(bd)
+    # termina verificaciond e modulo
+    if request.method=='GET':
+        id_prod=0
+        if request.QUERY_PARAMS.get('id') is not None:
+            id_prod=int(request.QUERY_PARAMS.get('id'))
+        categorias=ProductoCategoria.objects.using(bd).filter(es_nodo_principal=True,
+                                                        estado=True).order_by("numero")
+        cat=ProdCatAsig.objects.using(bd).values('producto_categoria_id').filter(estado=True,
+                                                                            producto_id=id_prod)
+        cats=[]
+        for c in cat:
+            cats.append(c['producto_categoria_id'])
+        texto='<ul>'
+        texto=texto+'<li>'+'<span><i class="fa fa-folder-open"></i> Principal</span>'
+        arbol=crearArbolProducto(categorias,bd,cats)
+        texto=texto+arbol+'</li></ul>'
+        respuesta = {'Arbol': texto}
+        
+        return Response(respuesta)
+    
+    elif request.method=='POST':
+        #print(request.DATA)
+        data={}
+        resp=0
+        for dato in request.DATA:
+            if request.DATA[dato]!='':
+                data[dato]=request.DATA[dato]  
+            else:
+                data[dato]=None     
+    
+        if request.DATA.get('cats')!=None:
+            cats=data['cats'].split(',')
+            cats_tmp=cats
+            cs=ProdCatAsig.objects.using(bd).filter(producto_id=data['id_prod'])
+            for c in cs:
+                ca=str(c.producto_categoria.id)
+                if ca in cats_tmp:
+                    cats.remove(ca)
+                    if c.estado==False:
+                        c.estado=True
+                        c.save(using=bd)
+                        resp=1
+                elif c.estado==True:
+                    c.estado=False
+                    c.save(using=bd)
+                    resp=1
+            for c in cats:
+                ca=ProdCatAsig(estado=True,
+                            producto_id=data['id_prod'],
+                            producto_categoria_id=c)
+                ca.save(using=bd)
+                resp=1
+            #if cat!=None:
+                
+            print(cats)
+        respuesta={"respuesta":resp}
+        return Response(respuesta, status=status.HTTP_201_CREATED)
+
+def crearArbolProducto(categorias,bd,id_cat):
+    texto='<ul>'
+    for cat in categorias:
+               
+        subcategorias=ProductoCategoria.objects.using(bd).filter(es_nodo_principal=False,
+                                                        estado=True,
+                                                        producto_categoria_id=cat.id).order_by("numero")
+        subsTexto=''
+        
+        if len(subcategorias)>0:
+            subsTexto=crearArbolProducto(subcategorias,bd,id_cat)
+            if cat.id in id_cat:
+                texto=texto+'<li>'+'<input checked="checked" type="checkbox" name="categoria" value="'+str(cat.id)+'" data-radio="'+cat.nombre+'" data-numero="'+str(cat.numero)+'" />\n\
+                        <span style="box-shadow: 0.2px 0.2px 6.2px #16a085;"><i class="fa fa-folder-open"></i> '+cat.nombre+' </span>'
+            else:
+                texto=texto+'<li>'+'<input type="checkbox" name="categoria" value="'+str(cat.id)+'" data-radio="'+cat.nombre+'" data-numero="'+str(cat.numero)+'"/>\n\
+                    <span><i class="fa fa-folder-open"></i> '+cat.nombre+' </span>'
+        else:
+            if cat.id in id_cat:
+                texto=texto+'<li>'+'<input checked="checked" type="checkbox" name="categoria" value="'+str(cat.id)+'" data-radio="'+cat.nombre+'" data-numero="'+str(cat.numero)+'" />\n\
+                        <span style="box-shadow: 0.2px 0.2px 6.2px #16a085;"><i class="fa fa-tag"></i> '+cat.nombre+' </span>'
+            else:
+                texto=texto+'<li>'+'<input type="checkbox" name="categoria" value="'+str(cat.id)+'" data-radio="'+cat.nombre+'" data-numero="'+str(cat.numero)+'"/>\n\
+                    <span><i class="fa fa-tag"></i> '+cat.nombre+' </span>'
+        texto=texto+subsTexto+'</li>';
+        
+    texto=texto+'</ul>'
+    
+    return texto
+
