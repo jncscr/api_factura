@@ -1,4 +1,5 @@
-from api_factura.models import Producto,Caracteristica,Atributo,TipoControl,AtributoValor
+from api_factura.models import Producto,Caracteristica,Atributo,TipoControl
+from api_factura.models import AtributoValor,ProductoCaracteristica,ProductoAtributo
 #from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework import pagination
@@ -29,15 +30,36 @@ class CaracteristicaSerializer(serializers.ModelSerializer):
         model = Caracteristica
         fields = ('id','nombre','estado')  
 
+class ProductoCaracteristicaSerializer(serializers.ModelSerializer):
+    nombre = serializers.SerializerMethodField('get_nombre')
+    class Meta:
+        model = ProductoCaracteristica
+        fields = ('id','valor','estado','caracteristica',
+                'nombre')
+    def get_nombre(self, obj):
+        
+        return obj.caracteristica.nombre
+    
 class AtributoSerializer(serializers.ModelSerializer):
     tipo_control_lb = serializers.SerializerMethodField('get_tipo_control_lb')
     class Meta:
         model = Atributo
         fields = ('id','nombre','estado','tipo_control','tipo_control_lb')  
     def get_tipo_control_lb(self, obj):
-        control=TipoControl.objects.using(obj._state.db).get(id=obj.tipo_control.id)
-        return control.nombre
+        return obj.tipo_control.nombre
 
+class ProductoAtributoSerializer(serializers.ModelSerializer):
+    tipo_control_lb = serializers.SerializerMethodField('get_tipo_control_lb')
+    atributo_lb = serializers.SerializerMethodField('get_atributo_lb')
+    class Meta:
+        model = ProductoAtributo
+        fields = ('id','estado','tipo_control','tipo_control_lb',
+                'atributo','atributo_lb')  
+    def get_tipo_control_lb(self, obj):
+        return obj.tipo_control.nombre
+    def get_atributo_lb(self, obj):
+        return obj.atributo.nombre
+    
 class AtributoValorSerializer(serializers.ModelSerializer):
     class Meta:
         model = AtributoValor
@@ -51,6 +73,10 @@ class PaginatedCaracteristicaSerializer(pagination.PaginationSerializer):
     class Meta:
         object_serializer_class=CaracteristicaSerializer
 
+class PaginatedProductoCaracteristicaSerializer(pagination.PaginationSerializer):
+    class Meta:
+        object_serializer_class=ProductoCaracteristicaSerializer
+
 class PaginatedAtributoSerializer(pagination.PaginationSerializer):
     class Meta:
         object_serializer_class=AtributoSerializer
@@ -58,3 +84,7 @@ class PaginatedAtributoSerializer(pagination.PaginationSerializer):
 class PaginatedAtributoValorSerializer(pagination.PaginationSerializer):
     class Meta:
         object_serializer_class=AtributoValorSerializer
+
+class PaginatedProductoAtributoSerializer(pagination.PaginationSerializer):
+    class Meta:
+        object_serializer_class=ProductoAtributoSerializer
