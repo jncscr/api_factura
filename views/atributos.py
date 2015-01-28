@@ -59,21 +59,6 @@ def atributo_listado(request):
         serializer = PaginatedAtributoSerializer(registros,
                                              context=serializer_context)
         
-        if request.QUERY_PARAMS.get('sin_total')==None:
-            num=0
-            conn = connections[bd]
-            if conn.connection is None:
-                cursor = conn.cursor()        
-            cursor = conn.connection.cursor()
-            query ='select count(atributo.id) \n\
-                    from atributo where atributo.estado=1'
-            cursor.execute(query)
-            row =cursor.fetchone()
-            if row[0]!=None:
-                num=row[0]
-            num=num+1
-            serializer.data['last_num_reg']=num;
-        
         return Response(serializer.data)
     
     elif request.method=='POST':
@@ -192,21 +177,6 @@ def atributo_val_listado(request):
         serializer = PaginatedAtributoValorSerializer(registros,
                                              context=serializer_context)
         
-        num=0
-        conn = connections[bd]
-        if conn.connection is None:
-            cursor = conn.cursor()        
-        cursor = conn.connection.cursor()
-        query ='select count(atributo_valor.id) \n\
-                from atributo_valor where atributo_valor.estado=1 \n\
-                and atributo_valor.atributo_id=%s'
-        cursor.execute(query,[id_atr])
-        row =cursor.fetchone()
-        if row[0]!=None:
-            num=row[0]
-        num=num+1
-        serializer.data['last_num_reg']=num;
-        
         return Response(serializer.data)
     
     elif request.method=='POST':
@@ -323,23 +293,6 @@ def atributo_producto_listado(request):
         #print(registros)
         serializer = PaginatedProductoAtributoSerializer(registros,
                                              context=serializer_context)
-        
-        num=0
-        conn = connections[bd]
-        if conn.connection is None:
-            cursor = conn.cursor()        
-        cursor = conn.connection.cursor()
-        query ='select count(producto_atributo.id) \n\
-                from producto_atributo,atributo,tipo_control \n\
-                where producto_atributo.producto_id=%s and producto_atributo.estado=1 \n\
-                and producto_atributo.atributo_id=atributo.id and atributo.estado=1 \n\
-                and producto_atributo.tipo_control_id=tipo_control.id'
-        cursor.execute(query,[id_prod])
-        row =cursor.fetchone()
-        if row[0]!=None:
-            num=row[0]
-        num=num+1
-        serializer.data['last_num_reg']=num;
         
         return Response(serializer.data)
     

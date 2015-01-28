@@ -38,16 +38,38 @@ def producto_listado(request):
     # termina verificaciond e modulo
     if request.method=='GET':
         #print(request.QUERY_PARAMS)
-        if request.QUERY_PARAMS.get('param') is not None:
+        
+        if request.QUERY_PARAMS.get('categoria') is not None:
+            cat=int(request.QUERY_PARAMS.get('categoria'))
+            param="%"+request.QUERY_PARAMS.get('param')+"%"
+            #param=request.QUERY_PARAMS.get('param')
+            #productos = Producto.objects.using(bd).filter(Q(estado=True),
+            #                                            Q(nombre__icontains = param) |
+            #                                            Q(descripcion__icontains=param))  
             
-            param=request.QUERY_PARAMS.get('param')
-            productos = Producto.objects.using(bd).filter(Q(estado=True),
-                                                        Q(nombre__icontains = param) |
-                                                        Q(descripcion__icontains=param))            
+            if cat>0:
+                query="estado=1 and (nombre like %s or descripcion like %s) \n\
+                    and id=(select prod_cat_asig.producto_id as prod from producto as pro,prod_cat_asig \n\
+                    where prod_cat_asig.estado=1 and prod_cat_asig.producto_categoria_id=%s \n\
+                    and prod_cat_asig.producto_id=pro.id and pro.id=producto.id)"
+                productos =Producto.objects.using(bd).extra(where=[query],params=[param,param,cat])
+            elif cat==0:
+                query="estado=1 and (nombre like %s or descripcion like %s) \n\
+                    and id=(select prod_cat_asig.producto_id as prod from producto as pro,prod_cat_asig \n\
+                    where prod_cat_asig.estado=1 and prod_cat_asig.producto_id=pro.id \n\
+                    and pro.id=producto.id limit 1)"
+                productos =Producto.objects.using(bd).extra(where=[query],params=[param,param])
+            elif cat==-1:
+                query="estado=1 and (nombre like %s or descripcion like %s) \n\
+                    and (select prod_cat_asig.producto_id as prod from producto as pro,prod_cat_asig \n\
+                    where prod_cat_asig.estado=1 and prod_cat_asig.producto_id=pro.id \n\
+                    and pro.id=producto.id limit 1) is null"
+                productos =Producto.objects.using(bd).extra(where=[query],params=[param,param])            
         else:
-            productos = Producto.objects.using(bd).filter(estado=True)
+            productos = None
         #print(len(personal))
-        paginator = Paginator(productos, 10)
+        numRegistros=request.QUERY_PARAMS.get('per_page')
+        paginator = Paginator(productos, numRegistros)
         
         page = request.QUERY_PARAMS.get('page')
         try:
@@ -139,10 +161,13 @@ def producto_detalle(request,pk):
         producto.nombre=data['nombre']
         producto.descripcion=data['descripcion']
         #print(data)
-        ruta_150x150=''
-        ruta_500x500=''
         img_cambio=False
         ruta=str(user.empresa.id)+'/productos/'+str(producto.id)
+        ruta_150x150=''
+        ruta_500x500=''
+        if producto.img_date!=None and producto.img_date!='':
+            ruta_150x150=MEDIA_URL+ruta+'/'+producto.img_date+'_principal_150x150.jpeg'
+            ruta_500x500=MEDIA_URL+ruta+'/'+producto.img_date+'_principal_500x500.jpeg'        
         if request.DATA['img_150x150']!=None and request.DATA['img_500x500']!=None:
             photo1 = request.DATA['img_150x150'].partition('base64,')[2]
             image_150x150 = base64.b64decode(photo1)
@@ -184,6 +209,8 @@ def producto_detalle(request,pk):
                 os.remove(img_anterior500)
             producto.img=None
             producto.img_date=None
+            ruta_150x150=''
+            ruta_500x500=''
         #print(img_cambio)
         if producto.has_changed==True:
             producto.save(using=bd)

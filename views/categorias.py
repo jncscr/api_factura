@@ -269,6 +269,7 @@ def categoria_producto_lista(request):
         categorias=ProductoCategoria.objects.using(bd).filter(es_nodo_principal=True,
                                                         estado=True).order_by("numero")
         texto='<ul class="dropdown-menu inner selectpicker" style="max-height: 220px; overflow-y: auto; min-height: 81px;" role="menu">'
+        texto=texto+'<li class="btn-group open"><a data-cat="-1" data-text="Sin categor&iacute;a"><span class="text">Sin categor&iacute;a</span></a></li>'
         texto=texto+'<li class="btn-group open active">'+'<a data-cat="0" data-text="Todas"><span class="text">Todas</span></a>'
         num=1
         array=[]
@@ -373,7 +374,9 @@ def categoria_producto(request):
                 data[dato]=None     
     
         if request.DATA.get('cats')!=None:
-            cats=data['cats'].split(',')
+            cats=''
+            if data['cats']!=None:
+                cats=data['cats'].split(',')
             cats_tmp=cats
             cs=ProdCatAsig.objects.using(bd).filter(producto_id=data['id_prod'])
             for c in cs:
