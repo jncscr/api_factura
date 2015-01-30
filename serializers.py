@@ -1,5 +1,6 @@
 from api_factura.models import Producto,Caracteristica,Atributo,TipoControl
 from api_factura.models import AtributoValor,ProductoCaracteristica,ProductoAtributo
+from api_factura.models import Personal
 #from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework import pagination
@@ -64,7 +65,14 @@ class AtributoValorSerializer(serializers.ModelSerializer):
     class Meta:
         model = AtributoValor
         fields = ('id','valor','atributo','estado')  
-        
+
+class PersonalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Personal
+        fields = ('id','nombres','apellidos',
+                'telefono','direccion','empresa',
+                'nit')
+
 class PaginatedProductoSerializer(pagination.PaginationSerializer):
     class Meta:
         object_serializer_class=ProductoSerializer
@@ -88,3 +96,7 @@ class PaginatedAtributoValorSerializer(pagination.PaginationSerializer):
 class PaginatedProductoAtributoSerializer(pagination.PaginationSerializer):
     class Meta:
         object_serializer_class=ProductoAtributoSerializer
+
+class PaginatedPersonalSerializer(pagination.PaginationSerializer):
+    class Meta:
+        object_serializer_class=PersonalSerializer

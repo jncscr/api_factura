@@ -20,6 +20,10 @@ urlpatterns = patterns('api_factura.views',
     url(r'^atributos/valores/(?P<pk>[0-9]+)$', 'atributo_val_detalle'),
     url(r'^atributos/productos/$', 'atributo_producto_listado'),
     url(r'^atributos/productos/(?P<pk>[0-9]+)$', 'atributo_producto_detalle'),
+    url(r'^proveedores/$', 'proveedor_listado'), 
+    url(r'^proveedores/(?P<pk>[0-9]+)$', 'proveedor_detalle'),
+    url(r'^clientes/$', 'cliente_listado'), 
+    url(r'^clientes/(?P<pk>[0-9]+)$', 'cliente_detalle'),
 )
 
 urlpatterns = format_suffix_patterns(urlpatterns)
